@@ -53,14 +53,30 @@ def get_home_rrps():
     home_rrps_dropdown.click()
     return home_rrps
 
-def get_rrp_countries():
+def next_country(previous_country):
+    global more_countries
+    global rrp_countries
     global rrp_countries_dropdown
     rrp_countries_dropdown = browser.find_elements_by_xpath("//*[@class='slicer-dropdown-menu']")[0]
     rrp_countries_dropdown.click()
-    sleep(1)
+    sleep(0.2)
     rrp_countries = browser.find_elements_by_xpath("//*[@class='slicer-dropdown-popup visual']//*[@class='slicerText']")
+    
+    if previous_country:
+        rrp_countries = rrp_countries[rrp_countries.index(previous_country)+1:]
+        rrp_country = rrp_countries[0]
+    else:
+        rrp_country = rrp_countries[0]
+
+    if rrp_country == rrp_countries[len(rrp_countries)-1]:
+        more_countries = False
+       
+    sleep(0.2)
+    browser.execute_script("arguments[0].scrollIntoView(true);", rrp_country)
+    rrp_country.click()
+    sleep(0.2)
     rrp_countries_dropdown.click()
-    return rrp_countries
+    return rrp_country
 
 def get_rrp_years():
     browser.switch_to.default_content()
@@ -77,13 +93,12 @@ def switch_year(year):
     browser.execute_script("arguments[0].click();", rrp_year_btn) #because chromedriver can't click straight sometimes
     browser.switch_to.default_content()
 
-def switch_country(country):
-    global rrp_country
-    rrp_country = rrp_countries[country]
+def switch_country(rrp_country):
     rrp_countries_dropdown.click()
-    sleep(1)
+    sleep(0.5)
+    browser.execute_script("arguments[0].scrollIntoView(true);", rrp_country)
     rrp_country.click()
-    sleep(1)
+    sleep(0.5)
     rrp_countries_dropdown.click()
 
 
@@ -103,7 +118,9 @@ home_rrps = get_home_rrps()
 for i in range(len(home_rrps)):
     rrp = home_rrps[i]
     rrp_text = rrp.get_attribute('title')
+    print(rrp_text)
     home_rrps_dropdown.click()
+    sleep(0.2)
     rrp.click()
     home_rrps_dropdown.click()
     home_rrps_search.click()
@@ -116,12 +133,14 @@ for i in range(len(home_rrps)):
         sleep(1)
         title = browser.find_elements_by_xpath("//*[@class='card']")[0].text
         title_year = title[len(title)-4:len(title)]
-        rrp_countries = get_rrp_countries()
-        sleep(1)
-        for k in range(len(rrp_countries)):
-            switch_country(k)
+        print(title_year)
+        more_countries = True
+        previous_country = None
+        while more_countries == True:
+            rrp_country = next_country(previous_country)
             country = rrp_country.get_attribute('title')
-            sleep(1)
+            print(country)
+            sleep(0.2)
             data = browser.find_elements_by_xpath("//*[@class='card']")[1].text
 
             cols = ['RRP', 'Year', 'Country'] + data.split('\n')[1::2]
@@ -132,7 +151,9 @@ for i in range(len(home_rrps)):
 
             output = output.append(cells, ignore_index = True)
 
-        switch_country(k) #Remove last country selection
+            previous_country = rrp_country
+
+        switch_country(previous_country) #Remove last country selection
         rrp_years = get_rrp_years()
             
     browser.get(url)
